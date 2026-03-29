@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>岭南鱼灯·视觉神经中枢粒子效果交互装置v16.0</title>
+    
+    <!-- 引入字体: Orbitron (数字/英文), Noto Serif SC (宋体), Zhi Mang Xing (书法) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Orbitron:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gold: #FFD700;
+            --gold-dim: rgba(255, 215, 0, 0.4);
+            --bg: #050505;
+            --text-main: #E0E0E0;
+            --panel-bg: rgba(10, 10, 10, 0.85);
+        }
+
+        /* 视口锁定：彻底禁止移动端页面回弹和溢出滚动 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Noto Serif SC', sans-serif;
+            overflow: hidden;
+            position: fixed;
+            inset: 0;
+            touch-action: none;
+        }
+
+        #webgl-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 界面遮罩与装饰 */
+        .vignette {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 30%, #000000 120%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0.3;
+        }
+
+        /* 标题：放回原位置 (左上角) */
+        .header {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* 标题增强：让书法字体更有张力 */
+        .header h1 {
+            font-family: 'Zhi Mang Xing', cursive;
+            font-size: 6rem; /* 从 3.5rem 增加到 6rem，视觉面积翻倍 */
+            margin: 0;
+            color: var(--gold);
+            text-shadow: 
+                0 0 20px var(--gold-dim),
+                0 0 40px rgba(255, 215, 0, 0.2); /* 增加多层光晕 */
+            letter-spacing: 12px; /* 拉大字间距，更有横幅的感觉 */
+            line-height: 1.1;
+        }
+
+        /* 副标题同步调整：保持排版比例 */
+        .header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem; /* 稍微大一点，增加可读性 */
+            margin: 10px 0 0 10px;
+            color: var(--text-main);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        /* 独立滚动层：右侧列表 */
+        #right-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 100%;
+            background: linear-gradient(to left, var(--panel-bg), transparent);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+            box-sizing: border-box;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            border-left: 1px solid rgba(255, 215, 0, 0.1);
+            scrollbar-width: none;
+        }
+        
+        #right-panel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            opacity: 0.5;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            opacity: 1;
+            transform: translateX(-10px);
+        }
+
+        /* 1. 深度做旧：斑驳朱砂古印章 - 替换原来的 .nav-num */
+        .nav-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 900;
+            color: #ffffff;           
+            
+            /* --- 【深度修改】：全方位模拟深度风化和斑驳石材纹理 --- */
+            /* 基础底色，略微加深以容纳复杂纹理 */
+            background-color: #a8202d; 
+            
+            /* 使用六层复杂的 CSS 渐变叠加模拟无限斑驳 */
+            background-image: 
+                /* 第1层：微小高密度噪声（模拟石头颗粒） */
+                repeating-radial-gradient(
+                    circle at 1px 1px,
+                    rgba(255, 255, 255, 0.1) 0,
+                    rgba(255, 255, 255, 0.1) 1px,
+                    transparent 1px,
+                    transparent 4px
+                ),
+                /* 第2层：风化裂纹和斑点 (使用jagged linear patterns) */
+                repeating-linear-gradient(135deg, rgba(0,0,0,0.02) 0, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px),
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0, rgba(0,0,0,0.02) 1px, transparent 1px, transparent 3px),
+                /* 第3层：深色矿物杂质斑驳 (更小且随机分布) */
+                radial-gradient(circle at 15% 25%, rgba(100, 10, 20, 0.5) 0%, transparent 30%),
+                radial-gradient(circle at 60% 70%, rgba(100, 10, 20, 0.5) 0%, transparent 30%),
+                radial-gradient(circle at 40% 10%, rgba(100, 10, 20, 0.5) 0%, transparent 30%),
+                radial-gradient(circle at 85% 55%, rgba(100, 10, 20, 0.5) 0%, transparent 30%),
+                /* 第4层：整体石材深度渐变 */
+                linear-gradient(135deg, rgba(200, 30, 40, 0.6) 0%, rgba(130, 20, 30, 0.9) 100%);
+            
+            /* 【核心关键】：使用多样的混合模式让各层深度融合 */
+            background-blend-mode: 
+                color-burn,   /* 第1层：斑驳颗粒感 */
+                hard-light,   /* 第2层：风化纹理 */
+                screen,       /* 第3层：深色杂质 */
+                overlay;      /* 第4层：整体深度 */
+            /* -------------------------------------------------------------------- */
+            
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            
+            /* 边缘不规则微圆角，模拟磨损 */
+            border-radius: 4px;       
+            transform: rotate(-3deg); 
+            
+            /* 增强阴刻效果，增加一个反向的微弱高光模拟边缘 */
+            text-shadow: -1px -1px 1px rgba(0,0,0,0.6), 1px 1px 1px rgba(255,255,255,0.05);
+            
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            
+            /* 增加一层极微弱的金色斑斑边框，模拟装裱磨损 */
+            border: 1.5px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 
+                0 2px 5px rgba(0,0,0,0.5), 
+                inset 0 0 10px rgba(0,0,0,0.1); /* 增加一层内部深度感 */
+        }
+
+        /* 2. 选中或鼠标悬停时的动态反馈 - 保持深度纹理 */
+        .nav-item:hover .nav-num, 
+        .nav-item.active .nav-num {
+            filter: brightness(1.2) saturate(1.1); /* 选中时整体变亮，不改变基础混合模式 */
+            transform: rotate(0deg) scale(1.15); /* 选中时变正并放大 */
+            box-shadow: 0 0 15px rgba(199, 36, 57, 0.6);
+            opacity: 1;
+        }
+
+        .nav-text {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+        }
+
+        .nav-en {
+            writing-mode: vertical-rl;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.6rem;
+            margin-top: 10px;
+            color: rgba(224, 224, 224, 0.5);
+            transform: rotate(180deg);
+        }
+
+        .upload-container {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            z-index: 10;
+        }
+
+        .cyber-btn {
+            position: relative;
+            background: transparent;
+            color: var(--gold);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            padding: 10px 20px;
+            border: 1px solid var(--gold);
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+        }
+
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--gold);
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+
+        .cyber-btn:hover::before {
+            left: 0;
+        }
+
+        .cyber-btn:hover {
+            color: #000;
+            box-shadow: 0 0 15px var(--gold-dim);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .lil-gui {
+            --background-color: rgba(10, 10, 10, 0.9);
+            --text-color: #E0E0E0;
+            --title-background-color: #1a1a1a;
+            --widget-color: #333;
+            --hover-color: #444;
+            --focus-color: var(--gold);
+            --number-color: var(--gold);
+            --string-color: var(--gold);
+            font-family: 'Orbitron', sans-serif;
+            position: absolute !important;
+            top: 40px !important;
+            /* 重点修改下面两行：解除左侧锁定，向右对齐并避开120px宽的导航栏 */
+            right: 140px !important; 
+            left: auto !important; 
+            z-index: 15 !important;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        #gesture-status {
+            position: absolute;
+            bottom: 230px; 
+            right: 150px;  
+            color: var(--gold);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            z-index: 20;
+            background: rgba(10, 10, 10, 0.8);
+            padding: 8px 15px;
+            border: 1px solid var(--gold);
+            border-radius: 4px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        
+        /* 音乐状态指示器 */
+        #audio-status {
+            position: absolute;
+            bottom: 270px; 
+            right: 150px;  
+            color: #44aaff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            z-index: 20;
+            background: rgba(10, 10, 10, 0.8);
+            padding: 6px 12px;
+            border: 1px solid #44aaff;
+            border-radius: 4px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .status-active { box-shadow: 0 0 10px var(--gold); }
+        .audio-active { box-shadow: 0 0 10px #44aaff; color: #fff; }
+/* 独立图片显示面板定位 */
+        #pixel-canvas {
+            position: absolute;
+            top: 50%;
+            left: 40px;
+            transform: translateY(-50%);
+            z-index: 10;
+            width: 256px;
+            height: 256px;
+            
+            /* 宣纸底色与纹理：使用重复线性渐变模拟纸张纤维 */
+            background-color: #e8e2d4; 
+            background-image: 
+                repeating-radial-gradient(circle at 0 0, rgba(0,0,0,0.03) 0% 1%, transparent 1% 2%),
+                linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+            
+            /* 边缘做旧与晕染效果 */
+            border: 8px solid #3a2e24; /* 深木色边框 */
+            border-image: none;
+            outline: 1px solid rgba(0,0,0,0.1);
+            
+            box-shadow: 
+                0 0 0 2px #d4c5a9, /* 类似装裱的细金边 */
+                5px 15px 30px rgba(0,0,0,0.5), 
+                inset 0 0 50px rgba(0,0,0,0.1); /* 内部压痕感 */
+            
+            /* 水墨韵味：让图像产生轻微的渗墨感 */
+            filter: contrast(1.1) sepia(0.2); 
+            transition: all 0.5s ease;
+        }
+        #camera-hud {
+            position: absolute;
+            bottom: 40px; 
+            right: 150px; 
+            width: 240px;
+            height: 180px;
+            z-index: 20;
+            border: 1px solid var(--gold-dim);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
+            transform: scaleX(-1); 
+        }
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .hud-corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-color: var(--gold);
+            border-style: solid;
+        }
+        .hud-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .hud-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+        .hud-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+        .hud-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+        
+        /* --- 1. 基础面板定位 (电脑端) --- */
+        .lil-gui {
+            position: absolute !important;
+            top: 40px !important;
+            right: 140px !important;
+            left: auto !important;
+            z-index: 15 !important;
+        }
+
+        #gui-morph-panel {
+            top: 280px !important; /* 形态参数面板向下移 */
+            right: 140px !important;
+            left: auto !important;
+            position: absolute !important;
+            z-index: 15 !important;
+        }
+
+        #pixel-canvas {
+            position: absolute;
+            top: 50%;
+            left: 40px;
+            transform: translateY(-50%);
+            z-index: 10;
+            border: 1px solid var(--gold-dim);
+            background-color: #000;
+        }
+
+        /* --- 2. 手机端适配 (只有在屏幕小时才会生效) --- */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 3.5rem; letter-spacing: 5px; } /* 手机端适中即可 */
+            #right-panel { width: 80px; padding: 20px 0; }
+            .nav-text { font-size: 1rem; }
+            
+            .lil-gui { top: 20px !important; right: 100px !important; }
+            #gui-morph-panel { top: 320px !important; right: 100px !important; }
+            #pixel-canvas { width: 150px; left: 20px; }
+            
+            .upload-container { bottom: 20px; left: 20px; }
+            #gesture-status { bottom: 150px; right: 100px; }
+            #audio-status { bottom: 190px; right: 100px; }
+            #camera-hud { bottom: 20px; right: 100px; width: 160px; height: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+
+    <div class="header">
+        <h1>岭南鱼灯</h1>
+        <h2>Visual Nerve Center v16.0</h2>
+    </div>
+
+    <div id="webgl-container"></div>
+    <div id="right-panel"></div>
+
+    <div class="upload-container">
+        <label for="image-upload" class="cyber-btn">
+            [SYS] Inject Image Data
+        </label>
+        <input type="file" id="image-upload" accept="image/*">
+    </div>
+
+    <div id="audio-status">🎵 Audio: Click to Init</div>
+    <div id="gesture-status">AI Vision: Initiating...</div>
+
+    <div id="camera-hud">
+        <canvas id="output_canvas" width="320" height="240"></canvas>
+        <div class="hud-corner tl"></div>
+        <div class="hud-corner tr"></div>
+        <div class="hud-corner bl"></div>
+        <div class="hud-corner br"></div>
+    </div>
+
+    <canvas id="pixel-canvas" width="256" height="256"></canvas>
+    <video id="webcam-video" style="display:none;" autoplay playsinline></video>
+
+    <!-- 库文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.18"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+    <script>
+        /**
+         * 核心数据结构：岭南文化展示
+         */
+        const quintessences = [
+            {
+                id: '01', zh: '鱼灯', en: 'Fish Lantern',
+                imgUrl: './01.jpg', // 指向本地 01.jpg
+                invert: false,
+                threshold: 0.15
+            },
+            {
+                id: '02', zh: '烟花', en: 'Fireworks',
+                imgUrl: './02.jpg', // 指向本地 02.jpg
+                invert: false,
+                threshold: 0.15
+            },
+            {
+                id: '03', zh: '荷塘', en: 'Lotus Pond',
+                imgUrl: './03.jpg', // 指向本地 03.jpg
+                invert: true,       // 03.jpg 底色较亮，保持反向抠像以提取工笔画线条和暗部
+                threshold: 0.80     // 可在右侧控制台微调此阈值以达到最佳粒子效果
+            }
+        ];
+
+        // ==========================================
+        // 【升级】：中国民族乐器模拟音效引擎 (古筝/琵琶/打击乐)
+        // ==========================================
+        const AudioEngine = {
+            ctx: null,
+            masterGain: null,
+            delay: null,
+            scales: {
+                '01': [130.81, 146.83, 164.81, 196.00, 220.00, 261.63], // 宫调 (C Pentatonic)
+                '02': [196.00, 220.00, 246.94, 293.66, 329.63, 392.00], // 徵调 (G Pentatonic)
+                '03': [146.83, 174.61, 196.00, 220.00, 261.63, 293.66]  // 羽调 (D Minor Pentatonic)
+            },
+            currentScale: '01',
+            lastNoteTime: 0,
+            isInitialized: false,
+
+            init() {
+                if (this.isInitialized) return;
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0;
+                    this.masterGain.connect(this.ctx.destination);
+
+                    // 空间回响：模拟大殿或山谷的深度
+                    this.delay = this.ctx.createDelay();
+                    this.delay.delayTime.value = 0.4;
+                    const feedback = this.ctx.createGain();
+                    feedback.gain.value = 0.35;
+                    this.delay.connect(feedback);
+                    feedback.connect(this.delay);
+                    this.delay.connect(this.masterGain);
+                    
+                    this.isInitialized = true;
+                    document.getElementById('audio-status').innerText = '🎵 Audio: 丝竹乐起';
+                    document.getElementById('audio-status').classList.add('audio-active');
+                } catch (e) { console.warn("Audio init failed", e); }
+            },
+
+            resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+
+            // 核心修改：模拟中国拨弦乐器 (Guzheng-like Pluck)
+            playPluck(freq, volume = 0.5) {
+                if (!this.ctx || this.ctx.state !== 'running') return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                // 使用三角波代替正弦波，增加泛音，听起来更有“弦”的味道
+                osc.type = 'triangle'; 
+                osc.frequency.setValueAtTime(freq, now);
+                // 模拟古筝拨弦时的轻微滑音 (Pitch Slide)
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.01, now + 0.1);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 3, now);
+                filter.Q.value = 5; // 增加共振，让音色更清亮
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+                gain.connect(this.delay);
+
+                // 快速侵入，中速衰减，模拟真实的拨弦动作
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(volume, now + 0.01); // 极其短促的起音
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5); 
+
+                osc.start(now);
+                osc.stop(now + 1.6);
+
+                // --- 叠加一个“木鱼/击打”声，增加互动反馈的确定感 ---
+                this.playPercussion(now, volume * 0.5);
+            },
+
+            // 模拟打击乐 (Woodblock/Muyu style)
+            playPercussion(time, vol) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, time);
+                osc.frequency.exponentialRampToValueAtTime(100, time + 0.05);
+
+                gain.gain.setValueAtTime(vol, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(time);
+                osc.stop(time + 0.06);
+            },
+
+            updateByGesture(isHandActive, handX, handY, fingerSpread) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                // 互动时主音量淡入淡出
+                if (isHandActive) {
+                    this.masterGain.gain.setTargetAtTime(0.8, now, 0.2); 
+                } else {
+                    this.masterGain.gain.setTargetAtTime(0.0, now, 1.0);
+                }
+
+                // 节奏响应：手指张开得越大，音符出现的频率越高
+                const playInterval = Math.max(0.15, 0.8 - (fingerSpread * 2.0));
+
+                if (isHandActive && (now - this.lastNoteTime > playInterval)) {
+                    const scale = this.scales[this.currentScale];
+                    const noteIndex = Math.floor(Math.max(0, Math.min(1, handX)) * scale.length);
+                    const safeIndex = Math.min(noteIndex, scale.length - 1);
+                    let freq = scale[safeIndex];
+
+                    // 偶尔触发高八度，增加灵动感
+                    if (Math.random() > 0.85) freq *= 2;
+
+                    const vol = 0.2 + (1 - handY) * 0.5;
+                    this.playPluck(freq, vol);
+
+                    this.lastNoteTime = now + (Math.random() * 0.05);
+                }
+            },
+
+            setScale(id) {
+                if (this.scales[id]) this.currentScale = id;
+            }
+        };
+
+        // ==========================================
+        // 原有系统代码逻辑
+        // ==========================================
+
+        let scene, camera, renderer, particles;
+        let particleMaterial, particleGeometry;
+        const PARTICLE_SIZE = 256; 
+        const canvas2d = document.getElementById('pixel-canvas');
+        const ctx = canvas2d.getContext('2d', { willReadFrequently: true });
+        
+        let targetTexture = null;
+        let clock = new THREE.Clock();
+        let currentProceduralId = null;
+        
+        let targetGestureScatter = 0;
+        let currentGestureScatter = 0;
+        let handsModel = null;
+        let cameraUtils = null;
+        
+        let isHandDetected = false;
+        let handNormX = 0.5;
+        let handNormY = 0.5;
+        let handSpread = 0;
+        
+        let targetRotX = 0, targetRotY = 0, targetRotZ = 0;
+        let currentRotX = 0, currentRotY = 0, currentRotZ = 0;
+        
+        const params = {
+            palette: '#FFD700',
+            colorTemp: 0.1,
+            tint: 0.0,
+            contrast: 1.6, 
+            brightness: 0.1,
+            lumaThreshold: 0.15, 
+            invertLuma: false, 
+            reliefDepth: 6.0,
+            particleSize: 4.0,
+            heartAmplitude: 0.8,
+            heartSpeed: 1.5,
+            fluidStrength: 0.6,
+            resetCamera: () => resetCameraView()
+        };
+
+        // 全局点击监听器，用于初始化和恢复 AudioContext (破解浏览器静音策略)
+        document.body.addEventListener('click', () => {
+            AudioEngine.init();
+            AudioEngine.resume();
+        }, { once: false });
+
+        init();
+        buildUI();
+        animate();
+
+        function init() {
+            const container = document.getElementById('webgl-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050505, 0.02);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 45);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            createParticleSystem();
+
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('image-upload').addEventListener('change', handleImageUpload);
+            
+            // 默认加载第一项
+            params.invertLuma = quintessences[0].invert;
+            params.lumaThreshold = quintessences[0].threshold;
+            updateUniforms();
+            loadNetworkImage(quintessences[0], false);
+            
+            resetCameraView();
+            initMediaPipe();
+        }
+
+        function initMediaPipe() {
+            const videoElement = document.getElementById('webcam-video');
+            const canvasElement = document.getElementById('output_canvas');
+            const canvasCtx = canvasElement.getContext('2d');
+            const statusEl = document.getElementById('gesture-status');
+
+            handsModel = new Hands({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }});
+
+            handsModel.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 0,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            handsModel.onResults((results) => {
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    statusEl.innerText = 'AI Vision: Hands Detected';
+                    statusEl.classList.add('status-active');
+                    isHandDetected = true;
+                    
+                    let maxDist = 0;
+                    for(let i = 0; i < results.multiHandLandmarks.length; i++) {
+                        const landmarks = results.multiHandLandmarks[i];
+                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#FFD700', lineWidth: 2});
+                        drawLandmarks(canvasCtx, landmarks, {color: '#FFFFFF', lineWidth: 1, radius: 3});
+
+                        const thumbTip = landmarks[4];
+                        const indexTip = landmarks[8];
+                        const dx = thumbTip.x - indexTip.x;
+                        const dy = thumbTip.y - indexTip.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > maxDist) maxDist = dist;
+
+                        if (i === 0) {
+                            const dxZ = landmarks[9].x - landmarks[0].x;
+                            const dyZ = landmarks[9].y - landmarks[0].y;
+                            const angleZ = Math.atan2(dyZ, dxZ) + Math.PI / 2;
+                            const posX = landmarks[9].x - 0.5;
+                            const posY = landmarks[9].y - 0.5;
+                            const depthYaw = (landmarks[17].z - landmarks[5].z) * -8.0; 
+                            const depthPitch = (landmarks[9].z - landmarks[0].z) * 8.0;
+
+                            targetRotX = posY * 2.5 + depthPitch;
+                            targetRotY = -posX * 2.5 + depthYaw; 
+                            targetRotZ = -angleZ;
+                            
+                            // 更新手势坐标用于音乐引擎
+                            handNormX = landmarks[9].x;
+                            handNormY = landmarks[9].y;
+                        }
+                    }
+
+                    handSpread = maxDist;
+                    const pinchThreshold = 0.05;
+                    if (maxDist < pinchThreshold) {
+                        targetGestureScatter = -params.fluidStrength; 
+                    } else {
+                        targetGestureScatter = (maxDist - pinchThreshold) * 40.0;
+                    }
+                } else {
+                    statusEl.innerText = 'AI Vision: Scanning...';
+                    statusEl.classList.remove('status-active');
+                    isHandDetected = false;
+                    targetGestureScatter = 0;
+                }
+                canvasCtx.restore();
+            });
+
+            cameraUtils = new Camera(videoElement, {
+                onFrame: async () => {
+                    await handsModel.send({image: videoElement});
+                },
+                width: 320,
+                height: 240
+            });
+            cameraUtils.start().catch(err => console.warn("Camera blocked."));
+        }
+
+        function createParticleSystem() {
+            const numParticles = PARTICLE_SIZE * PARTICLE_SIZE;
+            particleGeometry = new THREE.BufferGeometry();
+            
+            const positions = new Float32Array(numParticles * 3);
+            const uvs = new Float32Array(numParticles * 2);
+            
+            let idx = 0;
+            let uvIdx = 0;
+            const planeSize = 40; 
+            
+            for (let i = 0; i < PARTICLE_SIZE; i++) {
+                for (let j = 0; j < PARTICLE_SIZE; j++) {
+                    const x = (i / PARTICLE_SIZE - 0.5) * planeSize;
+                    const y = (j / PARTICLE_SIZE - 0.5) * planeSize;
+                    
+                    positions[idx++] = x;
+                    positions[idx++] = -y; 
+                    positions[idx++] = 0;
+                    
+                    uvs[uvIdx++] = i / PARTICLE_SIZE;
+                    uvs[uvIdx++] = 1.0 - (j / PARTICLE_SIZE); 
+                }
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+            const emptyTex = new THREE.DataTexture(new Uint8Array(4), 1, 1, THREE.RGBAFormat);
+            emptyTex.needsUpdate = true;
+
+            particleMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    tDiffuse: { value: emptyTex },
+                    uColorTemp: { value: params.colorTemp },
+                    uTint: { value: params.tint },
+                    uContrast: { value: params.contrast },
+                    uBrightness: { value: params.brightness },
+                    uBaseColor: { value: new THREE.Color(params.palette) },
+                    uThreshold: { value: params.lumaThreshold },
+                    uInvertLuma: { value: 0.0 },
+                    uRelief: { value: params.reliefDepth },
+                    uSize: { value: params.particleSize },
+                    uHeartAmplitude: { value: params.heartAmplitude },
+                    uHeartSpeed: { value: params.heartSpeed },
+                    uFluid: { value: params.fluidStrength },
+                    uGestureScatter: { value: 0.0 },
+                    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+                },
+                vertexShader: `
+                    uniform float uTime;
+                    uniform sampler2D tDiffuse;
+                    uniform float uThreshold;
+                    uniform float uInvertLuma;
+                    uniform float uRelief;
+                    uniform float uSize;
+                    uniform float uHeartAmplitude;
+                    uniform float uHeartSpeed;
+                    uniform float uFluid;
+                    uniform float uGestureScatter;
+                    uniform float uPixelRatio;
+                    
+                    varying vec2 vUv;
+                    varying vec3 vColor;
+                    varying float vLuma;
+
+                    void main() {
+                        vUv = uv;
+                        vec4 texColor = texture2D(tDiffuse, uv);
+                        vColor = texColor.rgb;
+                        vLuma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+                        
+                        vec3 pos = position;
+                        
+                        float isActive = mix(step(uThreshold, vLuma), step(vLuma, uThreshold), uInvertLuma);
+                        
+                        if(isActive > 0.0) {
+                            pos.z += vLuma * uRelief;
+                            float heartbeat = sin(uTime * uHeartSpeed + pos.x * 0.1 + pos.y * 0.1) * uHeartAmplitude * vLuma;
+                            pos.z += heartbeat;
+                            
+                            float noiseX = sin(uTime + pos.y * 0.5) * cos(uTime * 0.8 + pos.x * 0.3);
+                            float noiseY = cos(uTime + pos.x * 0.5) * sin(uTime * 0.7 + pos.y * 0.3);
+                            float noiseZ = sin(uTime * 1.2 + vLuma * 10.0);
+                            
+                            float totalScatter = max(0.0, uFluid + uGestureScatter);
+                            pos.x += noiseX * totalScatter * vLuma;
+                            pos.y += noiseY * totalScatter * vLuma;
+                            pos.z += noiseZ * totalScatter * vLuma;
+                        } else {
+                            pos.z -= 9999.0; 
+                        }
+
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = uSize * uPixelRatio * (20.0 / -mvPosition.z) * vLuma;
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uThreshold;
+                    uniform float uInvertLuma;
+                    uniform float uColorTemp;
+                    uniform float uTint;
+                    uniform float uContrast;
+                    uniform float uBrightness;
+                    uniform vec3 uBaseColor;
+                    varying vec2 vUv;
+                    varying vec3 vColor;
+                    varying float vLuma;
+
+                    void main() {
+                        vec2 coord = gl_PointCoord - vec2(0.5);
+                        if (length(coord) > 0.5) discard;
+                        
+                        if (uInvertLuma < 0.5) {
+                            if (vLuma < uThreshold) discard;
+                        } else {
+                            if (vLuma > uThreshold) discard;
+                        }
+
+                        vec3 finalColor = vColor;
+                        finalColor = (finalColor - 0.5) * uContrast + 0.5;
+                        finalColor += uBrightness;
+                        finalColor = mix(finalColor, finalColor * uBaseColor, 0.6);
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+
+        function buildUI() {
+            const panel = document.getElementById('right-panel');
+            quintessences.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `nav-item ${index === 0 ? 'active' : ''}`;
+                div.innerHTML = `
+                    <div class="nav-num">${item.id}</div>
+                    <div class="nav-text">${item.zh}</div>
+                    <div class="nav-en">${item.en}</div>
+                `;
+                div.onclick = () => {
+                    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    params.invertLuma = item.invert;
+                    params.lumaThreshold = item.threshold;
+                    updateUniforms();
+                    AudioEngine.setScale(item.id);
+                    loadNetworkImage(item, true);
+                };
+                panel.appendChild(div);
+            });
+
+            // 主控制台
+            const gui = new lil.GUI({ title: '神经网络控制台' });
+            const f1 = gui.addFolder('视觉控制');
+            f1.addColor(params, 'palette').name('主色调').onChange(updateUniforms);
+            f1.add(params, 'contrast', 1, 3).name('对比度').onChange(updateUniforms);
+            f1.add(params, 'brightness', -1, 1).name('亮度').onChange(updateUniforms);
+            gui.add(params, 'resetCamera').name('[ 重置运镜 ]');
+
+            // 独立的形态参数控制台
+            const guiMorph = new lil.GUI({ title: '形态参数' });
+            guiMorph.domElement.id = 'gui-morph-panel'; // 必须有这一行，CSS才能找到它
+            guiMorph.add(params, 'lumaThreshold', 0, 1.0).name('去黑/白阈值').onChange(updateUniforms);
+            guiMorph.add(params, 'invertLuma').name('反转抠像(浅底画)').onChange(updateUniforms);
+            guiMorph.add(params, 'reliefDepth', 0, 20).name('3D浮雕').onChange(updateUniforms);
+            guiMorph.add(params, 'particleSize', 0.1, 10).name('粒子大小').onChange(updateUniforms);
+        }
+
+        function updateUniforms() {
+            if (!particleMaterial) return;
+            const u = particleMaterial.uniforms;
+            u.uBaseColor.value.set(params.palette);
+            u.uContrast.value = params.contrast;
+            u.uBrightness.value = params.brightness;
+            u.uThreshold.value = params.lumaThreshold;
+            u.uInvertLuma.value = params.invertLuma ? 1.0 : 0.0;
+            u.uRelief.value = params.reliefDepth;
+            u.uSize.value = params.particleSize;
+        }
+
+        function generateProceduralImage(id, time = 0) {
+            ctx.clearRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE);
+            
+            if (id === '03') {
+                ctx.fillStyle = '#e6d8c3'; 
+                ctx.fillRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE);
+                const outlineColor = '#2a1a15'; 
+
+                const drawGongbiLeaf = (cx, cy, radius, scaleY, rotation, sway) => {
+                    ctx.save();
+                    ctx.translate(cx, cy + Math.sin(time + sway) * 2); 
+                    ctx.rotate(rotation + Math.cos(time + sway) * 0.05);
+                    ctx.scale(1, scaleY);
+                    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+                    grad.addColorStop(0, '#2b4435'); 
+                    grad.addColorStop(1, '#4c705b'); 
+                    ctx.beginPath();
+                    for (let i = 0; i <= Math.PI * 2; i += 0.2) {
+                        const r = radius - Math.sin(i * 6) * (radius * 0.06); 
+                        const x = Math.cos(i) * r;
+                        const y = Math.sin(i) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = outlineColor;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    for (let i = 0; i < Math.PI * 2; i += Math.PI / 6) {
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(Math.cos(i) * radius * 0.85, Math.sin(i) * radius * 0.85);
+                    }
+                    ctx.lineWidth = 0.6;
+                    ctx.strokeStyle = '#182b1d';
+                    ctx.stroke();
+                    ctx.restore();
+                };
+
+                const drawGongbiLotus = (cx, cy, scale, sway) => {
+                    ctx.save();
+                    ctx.translate(cx, cy + Math.sin(time + sway) * 3); 
+                    ctx.rotate(Math.sin(time * 0.8 + sway) * 0.04);
+                    ctx.scale(scale, scale);
+                    const drawPetal = (rot, width, height) => {
+                        ctx.save();
+                        ctx.rotate(rot);
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.bezierCurveTo(width, -height * 0.3, width * 0.6, -height * 0.8, 0, -height);
+                        ctx.bezierCurveTo(-width * 0.6, -height * 0.8, -width, -height * 0.3, 0, 0);
+                        const grad = ctx.createLinearGradient(0, 0, 0, -height);
+                        grad.addColorStop(0, '#d1a3a3'); 
+                        grad.addColorStop(0.5, '#ef7a82');
+                        grad.addColorStop(1, '#c72439'); 
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                        ctx.lineWidth = 1.2;
+                        ctx.strokeStyle = '#5a1216';
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0); ctx.quadraticCurveTo(width*0.2, -height*0.5, 0, -height*0.9);
+                        ctx.moveTo(0, 0); ctx.quadraticCurveTo(-width*0.2, -height*0.5, 0, -height*0.9);
+                        ctx.lineWidth = 0.5;
+                        ctx.strokeStyle = '#8a2228';
+                        ctx.stroke();
+                        ctx.restore();
+                    };
+                    drawPetal(-0.8, 18, 55); drawPetal(0.8, 18, 55); 
+                    drawPetal(-0.4, 22, 70); drawPetal(0.4, 22, 70); 
+                    drawPetal(0, 28, 85); 
+                    ctx.restore();
+                };
+
+                drawGongbiLeaf(PARTICLE_SIZE * 0.2, PARTICLE_SIZE * 0.7, 55, 0.6, 0.2, 0);
+                drawGongbiLeaf(PARTICLE_SIZE * 0.85, PARTICLE_SIZE * 0.6, 65, 0.5, -0.3, 1);
+                drawGongbiLeaf(PARTICLE_SIZE * 0.5, PARTICLE_SIZE * 0.45, 35, 0.3, 0, 2);
+
+                drawGongbiLotus(PARTICLE_SIZE * 0.28, PARTICLE_SIZE * 0.68, 0.8, 0); 
+                drawGongbiLotus(PARTICLE_SIZE * 0.82, PARTICLE_SIZE * 0.55, 0.6, 1.5); 
+
+                const boatFloatY = Math.sin(time * 1.5) * 4;
+                const boatFloatX = Math.cos(time * 0.7) * 8;
+                const boatTilt = Math.sin(time * 1.2) * 0.06;
+
+                ctx.save();
+                ctx.translate(PARTICLE_SIZE * 0.55 + boatFloatX, PARTICLE_SIZE * 0.7 + boatFloatY);
+                ctx.rotate(boatTilt);
+
+                ctx.fillStyle = '#4a3320';
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-45, 0); 
+                ctx.quadraticCurveTo(-20, 15, 25, 15); 
+                ctx.lineTo(55, -5); 
+                ctx.lineTo(25, -5);
+                ctx.lineTo(-35, -5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#2c2c2c';
+                ctx.beginPath();
+                ctx.moveTo(-25, -5);
+                ctx.quadraticCurveTo(0, -30, 25, -5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.beginPath();
+                for(let i=-20; i<=20; i+=6) {
+                    ctx.moveTo(i, -5);
+                    ctx.lineTo(i, -20 + Math.abs(i)*0.4);
+                }
+                ctx.strokeStyle = '#111';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                const oarAngle = Math.sin(time * 2.5) * 0.3;
+                ctx.save();
+                ctx.translate(35, 0);
+                ctx.rotate(oarAngle);
+                ctx.strokeStyle = '#3e2723';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-15, -20);
+                ctx.lineTo(20, 15); 
+                ctx.stroke();
+                ctx.restore();
+                ctx.restore();
+
+                const fishX1 = PARTICLE_SIZE * 0.4 + Math.cos(time * 0.6) * 15;
+                const fishY1 = PARTICLE_SIZE * 0.85 + Math.sin(time * 0.9) * 8;
+                ctx.fillStyle = '#e62e00';
+                ctx.beginPath();
+                ctx.ellipse(fishX1, fishY1, 8, 3, -0.2 + Math.cos(time)*0.2, 0, Math.PI*2);
+                ctx.fill();
+            } 
+            
+            updateTextureFromCanvas();
+        }
+
+        function loadNetworkImage(item, triggerAnim = true) {
+            const statusEl = document.getElementById('gesture-status');
+            currentProceduralId = null; 
+            
+            if (item.imgUrl.startsWith('procedural')) {
+                currentProceduralId = item.id; 
+                statusEl.innerText = 'SYS: Running Procedural Engine...';
+                generateProceduralImage(item.id, 0);
+                if (triggerAnim) triggerOrbitCruise();
+                return;
+            }
+            
+            statusEl.innerText = 'SYS: Fetching ' + item.zh + '...';
+            const img = new Image();
+            if (item.imgUrl.startsWith('http')) {
+                img.crossOrigin = "Anonymous"; 
+            }
+            
+            img.onload = function() {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE);
+                
+                // --- 修改为等比缩放，完整显示图片 ---
+                const scale = Math.min(PARTICLE_SIZE / img.width, PARTICLE_SIZE / img.height);
+                const drawWidth = img.width * scale;
+                const drawHeight = img.height * scale;
+                const offsetX = (PARTICLE_SIZE - drawWidth) / 2;
+                const offsetY = (PARTICLE_SIZE - drawHeight) / 2;
+                
+                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                // ------------------------------------
+                
+                updateTextureFromCanvas();
+                statusEl.innerText = 'SYS: ' + item.zh + ' Data Injected';
+                if (triggerAnim) triggerOrbitCruise();
+            };
+            
+            img.onerror = function() {
+                console.warn("Image loading failed:", item.imgUrl);
+                statusEl.innerText = 'SYS: Image Load Failed - Fallback';
+            };
+            img.src = encodeURI(item.imgUrl);
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    currentProceduralId = null;
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE);
+                    
+                    // --- 修改为等比缩放，完整显示图片 ---
+                    const scale = Math.min(PARTICLE_SIZE / img.width, PARTICLE_SIZE / img.height);
+                    const drawWidth = img.width * scale;
+                    const drawHeight = img.height * scale;
+                    const offsetX = (PARTICLE_SIZE - drawWidth) / 2;
+                    const offsetY = (PARTICLE_SIZE - drawHeight) / 2;
+                    
+                    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                    // ------------------------------------
+                    
+                    updateTextureFromCanvas();
+                    triggerOrbitCruise();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateTextureFromCanvas() {
+            if (!targetTexture) {
+                targetTexture = new THREE.CanvasTexture(canvas2d);
+                targetTexture.minFilter = THREE.NearestFilter;
+                targetTexture.magFilter = THREE.NearestFilter;
+                particleMaterial.uniforms.tDiffuse.value = targetTexture;
+            } else {
+                targetTexture.needsUpdate = true;
+            }
+        }
+
+        function triggerOrbitCruise() {
+            const radius = 35 + Math.random() * 15;
+            const angle = (Math.random() - 0.5) * Math.PI;
+            gsap.to(camera.position, {
+                x: Math.sin(angle) * radius,
+                y: (Math.random()-0.5)*20,
+                z: Math.cos(angle) * radius,
+                duration: 2.5,
+                ease: "power3.inOut",
+                onUpdate: () => camera.lookAt(0, 0, 0)
+            });
+        }
+        
+        function resetCameraView() {
+            gsap.to(camera.position, { x: 0, y: 0, z: 45, duration: 2.0, onUpdate: () => camera.lookAt(0,0,0) });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+            
+            if (currentProceduralId === '03') {
+                generateProceduralImage('03', time);
+            }
+
+            // 更新音乐合成器 (输入：手势状态, X坐标, Y坐标, 两指张开距离)
+            AudioEngine.updateByGesture(isHandDetected, handNormX, handNormY, handSpread);
+
+            if (particleMaterial) {
+                particleMaterial.uniforms.uTime.value = time;
+                currentGestureScatter += (targetGestureScatter - currentGestureScatter) * 0.1;
+                particleMaterial.uniforms.uGestureScatter.value = currentGestureScatter;
+            }
+            if(particles) {
+                if (isHandDetected) {
+                    currentRotX += (targetRotX - currentRotX) * 0.1;
+                    currentRotY += (targetRotY - currentRotY) * 0.1;
+                    currentRotZ += (targetRotZ - currentRotZ) * 0.1;
+                } else {
+                    currentRotX += (Math.cos(time * 0.1) * 0.05 - currentRotX) * 0.05;
+                    currentRotY += (Math.sin(time * 0.1) * 0.1 - currentRotY) * 0.05;
+                    currentRotZ += (-currentRotZ) * 0.05;
+                }
+                particles.rotation.set(currentRotX, currentRotY, currentRotZ);
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
